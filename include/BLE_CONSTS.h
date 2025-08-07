@@ -1,0 +1,5 @@
+#define SERVICE_UUID        "SWITCH"
+#define CHARACTERISTIC_UUID "ABCED"
+
+#define CLIENT_NAME "CLIENT"
+#define SERVER_NAME "SERVER"
