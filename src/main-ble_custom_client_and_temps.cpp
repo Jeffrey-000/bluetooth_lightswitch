@@ -86,11 +86,11 @@ Servo servo(servoPin);
 void setup()
 {
     Serial.begin(115200);
+    mqttAHT.begin();
+    initBLE();
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(button_pin, INPUT_PULLUP);
     servo.begin();
-    initBLE();
-    mqttAHT.begin();
 }
 
 void loop()
@@ -112,27 +112,27 @@ void loop()
         }
         // NimBLEDevice::getScan()->start(scanTimeMs, false, true);
     }
-    unsigned long now = millis();
     mqttAHT.loop();
+    unsigned long now = millis();
     if (now - lastMessage > frequency)
     {
         SensorData data = mqttAHT.readSensor();
         mqttAHT.publishToTopic(data);
         lastMessage = millis();
     }
-    if (digitalRead(button_pin) == 0 && millis() - lastButtonPress > debounceTime)
+    if (digitalRead(button_pin) == 0 && now - lastButtonPress > debounceTime)
     {
-        lastButtonPress = millis();
         if (currentAngle < 0 || currentAngle > 50)
         {
-            currentAngle = 0;
             servo.setAngle(0);
+            currentAngle = 0;
         }
         else
         {
-            currentAngle = 120;
             servo.setAngle(120);
+            currentAngle = 120;
         }
+        lastButtonPress = millis();
     }
     if (currentAngle > 50)
     {

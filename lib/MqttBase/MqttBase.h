@@ -33,7 +33,7 @@ public:
     static float CtoF(float c);
     void setupWifi();
     void syncTime();
-    void publishToTopic(SensorData data);
+    bool publishToTopic(SensorData data);
     void reconnectToMqttServer();
 };
 

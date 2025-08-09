@@ -76,8 +76,11 @@ void MqttBase::reconnectToMqttServer()
     }
 }
 
-void MqttBase::publishToTopic(SensorData data)
+bool MqttBase::publishToTopic(SensorData data)
 {
+    if(data.humidity == 0 || data.temperature == 0 || data.temperature == 32) {
+        return false;
+    }
     char jsonBuffer[100];
     snprintf(jsonBuffer, sizeof(jsonBuffer),
              "{\"temperature\": %.2f, \"humidity\": %.2f, \"time\": %ld}",
@@ -87,4 +90,5 @@ void MqttBase::publishToTopic(SensorData data)
     Serial.println(jsonBuffer);
 
     mqttClient.publish(mqttInfo.topic.c_str(), jsonBuffer);
+    return true;
 }
