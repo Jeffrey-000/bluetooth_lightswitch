@@ -2,19 +2,8 @@
 #include <NimBLEDevice.h>
 #include <BLE_CONSTS.h>
 #include <../lib/Servo/Servo.h>
-#include <WiFi.h>
-#include <PubSubClient.h>
-#include <DHT.h>
-#include <time.h>
-#include <sys/time.h>
 #include "SECRETS.h"
-
-void setup_wifi();
-void reconnect();
-void syncTime();
-float CtoF(float c);
-void readFromSensor(unsigned long now);
-void sendMessage(unsigned long now);
+#include <MqttAHT.h>
 
 #define SERVICE "BAAD"
 #define CHR "FOOD" // dont work when not food for some reason
@@ -28,25 +17,24 @@ static uint32_t scanTimeMs = 5000; /** scan time in milliseconds, 0 = scan forev
 static bool readyToConnect = false;
 static bool isConnected = false;
 const int servoPin = 13;
+const int SDA_pin = 25;
+const int SCL_pin = 26;
+const int button_pin = 27;
+unsigned long lastButtonPress = 0;
+unsigned int debounceTime = 500;
 
-// DHT settings
-const uint8_t DHTPIN = 4; // GPIO where the DHT sensor is connected
-const uint8_t DHTTYPE = DHT22;
-// https://www.adafruit.com/product/386?srsltid=AfmBOoq0uIDvW8eU0y9S7mg77y8f04Icmpm7jYoAt8YaKJMwxaD57tUQ
-DHT dht(DHTPIN, DHTTYPE);
+int currentAngle = -1;
 
-// Clients & Servers
-WiFiClient wifiClient;
-PubSubClient mqttClient(wifiClient);
+WifiInfo wifiInfo{
+    SSID,
+    PASSWORD};
+MqttInfo mqttInfo{
+    SERVER, PORT, TOPIC};
 
-// Timing
-const int INTERVAL = 5000; // Publish every 5 seconds. max is every 2 seconds
-unsigned long lastMsgTime = 0;
-unsigned long lastSensorRead = 0;
+MqttAHT mqttAHT(wifiInfo, mqttInfo, SDA_pin, SCL_pin);
 
-// Globals
-float temp = -1;     // only good to zero c
-float humidity = -1; // humidity in %, lowest it reads is 20%
+unsigned int lastMessage = 0;
+unsigned int frequency = 10000; // 10 seconds
 
 static const NimBLEAdvertisedDevice *advDevice;
 class ClientCallbacks : public NimBLEClientCallbacks
@@ -99,13 +87,10 @@ void setup()
 {
     Serial.begin(115200);
     pinMode(LED_BUILTIN, OUTPUT);
-    dht.begin();
+    pinMode(button_pin, INPUT_PULLUP);
     servo.begin();
-    servo.setAngle(0);
     initBLE();
-    setup_wifi();
-    syncTime();
-    mqttClient.setServer(SERVER, PORT);
+    mqttAHT.begin();
 }
 
 void loop()
@@ -127,15 +112,36 @@ void loop()
         }
         // NimBLEDevice::getScan()->start(scanTimeMs, false, true);
     }
-    if (!mqttClient.connected())
-    {
-        reconnect();
-    }
-    mqttClient.loop();
-
     unsigned long now = millis();
-    readFromSensor(now);
-    sendMessage(now);
+    mqttAHT.loop();
+    if (now - lastMessage > frequency)
+    {
+        SensorData data = mqttAHT.readSensor();
+        mqttAHT.publishToTopic(data);
+        lastMessage = millis();
+    }
+    if (digitalRead(button_pin) == 0 && millis() - lastButtonPress > debounceTime)
+    {
+        lastButtonPress = millis();
+        if (currentAngle < 0 || currentAngle > 50)
+        {
+            currentAngle = 0;
+            servo.setAngle(0);
+        }
+        else
+        {
+            currentAngle = 120;
+            servo.setAngle(120);
+        }
+    }
+    if (currentAngle > 50)
+    {
+        digitalWrite(LED_BUILTIN, HIGH);
+    }
+    else
+    {
+        digitalWrite(BUILTIN_LED, LOW);
+    }
 }
 
 void notifyCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
@@ -158,14 +164,7 @@ void notifyCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData,
         return;
     }
     servo.setAngle(angle);
-    if (angle < 50)
-    {
-        digitalWrite(LED_BUILTIN, HIGH);
-    }
-    else
-    {
-        digitalWrite(BUILTIN_LED, LOW);
-    }
+    currentAngle = angle;
 }
 
 bool handleConnection(NimBLEClient *pClient)
@@ -312,95 +311,4 @@ void initBLE()
 
     pScan->start(scanTimeMs, false, true);
     Serial.printf("Scanning for peripherals\n");
-}
-
-//----------------------------------------------------
-float CtoF(float c)
-{
-    return c * 9 / 5 + 32;
-}
-
-void readFromSensor(unsigned long now)
-{
-    if (now - lastSensorRead > INTERVAL)
-    {
-        lastSensorRead = now;
-        temp = CtoF(dht.readTemperature());
-        humidity = dht.readHumidity();
-    }
-}
-
-void sendMessage(unsigned long now)
-{
-    if (now - lastMsgTime > INTERVAL)
-    {
-        lastMsgTime = now;
-        if (isnan(temp) || isnan(humidity))
-        {
-            Serial.println("Failed to read from DHT sensor");
-            return;
-        }
-        char jsonBuffer[100];
-        snprintf(jsonBuffer, sizeof(jsonBuffer),
-                 "{\"temperature\": %.2f, \"humidity\": %.2f, \"time\": %ld}",
-                 temp, humidity, time(nullptr));
-
-        Serial.println("Publishing JSON:");
-        Serial.println(jsonBuffer);
-
-        mqttClient.publish(TOPIC, jsonBuffer);
-    }
-}
-
-void setup_wifi()
-{
-    delay(10);
-    Serial.println();
-    Serial.print("Connecting to WiFi: ");
-    Serial.println(SSID);
-
-    WiFi.begin(SSID, PASSWORD);
-
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-
-    Serial.println("\nWiFi connected");
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-}
-
-void reconnect()
-{
-    // Loop until reconnected
-    while (!mqttClient.connected())
-    {
-        Serial.print("Attempting MQTT connection...");
-        // Attempt to connect
-        if (mqttClient.connect("ESP32Client"))
-        {
-            Serial.println("connected");
-        }
-        else
-        {
-            Serial.print("failed, rc=");
-            Serial.print(mqttClient.state());
-            Serial.println(" retrying in 5 seconds");
-            delay(5000);
-        }
-    }
-}
-
-void syncTime()
-{
-    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-    Serial.println("Waiting for NTP time sync...");
-    while (time(nullptr) < 100000)
-    {
-        delay(100);
-        Serial.print(".");
-    }
-    Serial.println("\nTime synced!");
 }

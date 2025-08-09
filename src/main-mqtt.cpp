@@ -16,7 +16,7 @@ void sendMessage(unsigned long now);
 
 // DHT settings
 const uint8_t DHTPIN = 4; // GPIO where the DHT sensor is connected
-const uint8_t DHTTYPE = DHT11;
+const uint8_t DHTTYPE = DHT22;
 // https://www.adafruit.com/product/386?srsltid=AfmBOoq0uIDvW8eU0y9S7mg77y8f04Icmpm7jYoAt8YaKJMwxaD57tUQ
 DHT dht(DHTPIN, DHTTYPE);
 
@@ -115,12 +115,14 @@ void setup_wifi()
 
 void reconnect()
 {
+  String clientId = "esp32-dht-" + String(random(0xffff), HEX);
+
   // Loop until reconnected
   while (!mqttClient.connected())
   {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (mqttClient.connect("ESP32Client"))
+    if (mqttClient.connect(clientId.c_str()))
     {
       Serial.println("connected");
     }

@@ -109,7 +109,7 @@ void loop()
                 if (pChr)
                 {
                     ledState = !ledState;
-                    pChr->setValue(ledState ? "30" : "80");
+                    pChr->setValue(ledState ? "0" : "130");
                     pChr->notify();
                     lastTouchTime = millis();
                 }
