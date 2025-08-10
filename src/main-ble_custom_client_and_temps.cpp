@@ -28,7 +28,7 @@ WifiInfo wifiInfo{
     SSID,
     PASSWORD};
 MqttInfo mqttInfo{
-    SERVER, PORT, TOPIC};
+    SERVER, PORT, "sensors/temperature/aht20/lightswitch"};
 
 MqttAHT mqttAHT(wifiInfo, mqttInfo, SDA_pin, SCL_pin);
 
