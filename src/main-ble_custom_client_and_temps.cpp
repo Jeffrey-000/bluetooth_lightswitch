@@ -23,7 +23,6 @@ const int button_pin = 27;
 unsigned long lastButtonPress = 0;
 unsigned int debounceTime = 500;
 
-int currentAngle = -1;
 
 WifiInfo wifiInfo{
     SSID,
@@ -90,6 +89,7 @@ void setup()
     initBLE();
     pinMode(LED_BUILTIN, OUTPUT);
     pinMode(button_pin, INPUT_PULLUP);
+    servo.setUnpoweredIfIdle(true);
     servo.begin();
 }
 
@@ -122,19 +122,17 @@ void loop()
     }
     if (digitalRead(button_pin) == 0 && now - lastButtonPress > debounceTime)
     {
-        if (currentAngle < 0 || currentAngle > 50)
+        if (servo.currentAngle() < 0 || servo.currentAngle() > 50)
         {
             servo.setAngle(0);
-            currentAngle = 0;
         }
         else
         {
             servo.setAngle(120);
-            currentAngle = 120;
         }
         lastButtonPress = millis();
     }
-    if (currentAngle > 50)
+    if (servo.currentAngle() > 50)
     {
         digitalWrite(LED_BUILTIN, HIGH);
     }
@@ -142,6 +140,7 @@ void loop()
     {
         digitalWrite(BUILTIN_LED, LOW);
     }
+    servo.update();
 }
 
 void notifyCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
@@ -164,7 +163,6 @@ void notifyCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData,
         return;
     }
     servo.setAngle(angle);
-    currentAngle = angle;
 }
 
 bool handleConnection(NimBLEClient *pClient)
