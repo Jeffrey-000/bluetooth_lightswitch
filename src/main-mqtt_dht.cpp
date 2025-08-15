@@ -7,7 +7,9 @@ WifiInfo wifiInfo{
 MqttInfo mqttInfo{
     SERVER, PORT, "sensors/temperature/dht22/bedroom"};
 
-MqttDHT mqttDHT(wifiInfo, mqttInfo, 5, DHT22);
+//MqttDHT mqttDHT(wifiInfo, mqttInfo, 5, DHT22);
+MqttDHT mqttDHT(wifiInfo, mqttInfo, 5, DHT11);
+
 
 unsigned int lastMessage = 0;
 unsigned int frequency = 10000; // 10 seconds
