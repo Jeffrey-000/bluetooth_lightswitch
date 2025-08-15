@@ -1,18 +1,25 @@
-
-#ifndef MQTTBASE_H
-#define MQTTBASE_H
-
-#include <WifiInfo.h>
-#include <MqttInfo.h>
-
+#pragma once
+#include <WifiManager.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <time.h>
 #include <sys/time.h>
 using namespace std;
+struct MqttInfo
+{
+    std::string server;
+    int port;
+    std::string topic;
+    std::string clientName;
 
+    MqttInfo(const std::string &s, int p, const std::string &t, const std::string &c = "randomClient")
+        : server(s), port(p), topic(t), clientName(c)
+    {
+    }
+};
 
-struct SensorData {
+struct SensorData
+{
     float temperature;
     float humidity;
 };
@@ -20,21 +27,17 @@ struct SensorData {
 class MqttBase
 {
 private:
-    WiFiClient wifiClient;
-    PubSubClient mqttClient;
     const WifiInfo wifiInfo;
     const MqttInfo mqttInfo;
 
 public:
+    WifiManager wifiManager;
+    PubSubClient mqttClient;
     MqttBase(const WifiInfo &wifi, const MqttInfo &mqtt);
     virtual void begin();
     virtual void loop();
-    //virtual SensorData readSensor();
+    virtual SensorData readSensor() = 0;
     static float CtoF(float c);
-    void setupWifi();
-    void syncTime();
     bool publishToTopic(SensorData data);
     void reconnectToMqttServer();
 };
-
-#endif

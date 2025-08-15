@@ -13,15 +13,19 @@ void notifyCB(NimBLERemoteCharacteristic *pRemoteCharacteristic, uint8_t *pData,
 bool handleConnection(NimBLEClient *pClient);
 void initBLE();
 
+const int servoPin = 14;
+const int SDA_pin = 26;
+const int SCL_pin = 25;
+const int button_pin = 12;
+
+
 static uint32_t scanTimeMs = 5000; /** scan time in milliseconds, 0 = scan forever */
 static bool readyToConnect = false;
 static bool isConnected = false;
-const int servoPin = 13;
-const int SDA_pin = 25;
-const int SCL_pin = 26;
-const int button_pin = 27;
 unsigned long lastButtonPress = 0;
 unsigned int debounceTime = 500;
+unsigned int lastMessage = 0;
+unsigned int frequency = 10000; // 10 seconds
 
 
 WifiInfo wifiInfo{
@@ -32,8 +36,6 @@ MqttInfo mqttInfo{
 
 MqttAHT mqttAHT(wifiInfo, mqttInfo, SDA_pin, SCL_pin);
 
-unsigned int lastMessage = 0;
-unsigned int frequency = 10000; // 10 seconds
 
 static const NimBLEAdvertisedDevice *advDevice;
 class ClientCallbacks : public NimBLEClientCallbacks

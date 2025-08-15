@@ -53,7 +53,7 @@ void Servo::setAngle(int angle)
     }
     // Estimate movement time (ms) — adjust multiplier for your servo speed
     unsigned long moveTime = abs(_currentAngle - _targetAngle) * _speedDelay; // _speedDelay might be the wrong variable/ will not work with 10?
-    _moveEndTime = millis() + moveTime + _sleepDelay; //min on for 1 second
+    _moveEndTime = millis() + moveTime + _sleepDelay;                         // min on for 1 second
     _setAngle(angle);
 }
 
